@@ -1,0 +1,245 @@
+
+import { Button, LineEdit, ListView } from "std-widgets.slint";
+import { FileEntry, Breadcrumb } from "../ui/file.slint";
+
+export component MainWindow inherits Window {
+    preferred-width: 1000px;
+    preferred-height: 650px;
+
+    // Navigation callbacks
+    callback open-directory(string);
+    callback open-entry(string);
+    callback navigate-back();
+    callback navigate-up();
+    callback navigate-to(string);
+
+    // File selection and context menu callbacks
+    callback select-entry(string);
+    callback context-menu-action(string);
+
+    // File manager properties
+    in-out property <[FileEntry]> files: [];
+    in-out property <[Breadcrumb]> breadcrumbs: [];
+
+    in-out property <string> current-path: "";
+    in-out property <string> selected-path: "";
+
+    in-out property <bool> can-go-back: false;
+    in-out property <bool> can-go-up: false;
+
+    VerticalLayout {
+        padding: 20px;
+        spacing: 12px;
+
+        // Top navigation bar
+        HorizontalLayout {
+            height: 42px;
+            spacing: 8px;
+
+            Button {
+                text: "Back";
+                enabled: root.can-go-back;
+
+                clicked => {
+                    root.navigate-back();
+                }
+            }
+
+            Button {
+                text: "Up";
+                enabled: root.can-go-up;
+
+                clicked => {
+                    root.navigate-up();
+                }
+            }
+
+            directory_input := LineEdit {
+                placeholder-text: "Enter directory path...";
+                horizontal-stretch: 1;
+            }
+
+            Button {
+                text: "Open";
+
+                clicked => {
+                    root.open-directory(directory_input.text);
+                }
+            }
+        }
+
+        // Breadcrumb navigation
+        HorizontalLayout {
+            height: 40px;
+            spacing: 4px;
+
+            for crumb in root.breadcrumbs: Button {
+                text: crumb.name;
+
+                clicked => {
+                    root.navigate-to(crumb.path);
+                }
+            }
+        }
+
+        // Separator
+        Rectangle {
+            height: 1px;
+            background: #cccccc;
+        }
+
+        // File listing headers
+        HorizontalLayout {
+            height: 32px;
+            spacing: 12px;
+
+            Text {
+                text: "";
+                width: 32px;
+            }
+
+            Text {
+                text: "Name";
+                horizontal-stretch: 1;
+                font-weight: 700;
+            }
+
+            Text {
+                text: "Size";
+                width: 90px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: "Modified";
+                width: 150px;
+                font-weight: 700;
+            }
+
+            Text {
+                text: "Extension";
+                width: 80px;
+                font-weight: 700;
+            }
+        }
+
+        // Context menu and file listing
+        context_menu := ContextMenuArea {
+            Menu {
+                MenuItem {
+                    title: "Open";
+                    activated => {
+                        root.context-menu-action("open");
+                    }
+                }
+
+                MenuItem {
+                    title: "Rename";
+                    activated => {
+                        root.context-menu-action("rename");
+                    }
+                }
+
+                MenuItem {
+                    title: "Copy path";
+                    activated => {
+                        root.context-menu-action("copy-path");
+                    }
+                }
+
+                MenuItem {
+                    title: "Properties";
+                    activated => {
+                        root.context-menu-action("properties");
+                    }
+                }
+
+                MenuSeparator {}
+
+                MenuItem {
+                    title: "Delete";
+                    activated => {
+                        root.context-menu-action("delete");
+                    }
+                }
+            }
+
+            ListView {
+                for file in root.files: TouchArea {
+                    width: 100%;
+                    height: 38px;
+
+                    clicked => {
+                        root.select-entry(file.path);
+                    }
+
+                    double-clicked => {
+                        if file.is_directory {
+                            root.open-entry(file.path);
+                        }
+                    }
+
+                    pointer-event(pe) => {
+                        if pe.button == PointerEventButton.right
+                            && pe.kind == PointerEventKind.up {
+
+                            root.select-entry(file.path);
+
+                            context_menu.show({
+                                x: self.absolute-position.x
+                                    + self.mouse-x
+                                    - context_menu.absolute-position.x,
+
+                                y: self.absolute-position.y
+                                    + self.mouse-y
+                                    - context_menu.absolute-position.y,
+                            });
+                        }
+                    }
+
+                    Rectangle {
+                        background: root.selected-path == file.path
+                            ? #e8edf3
+                            : transparent;
+
+                        HorizontalLayout {
+                            padding-left: 8px;
+                            padding-right: 8px;
+                            spacing: 12px;
+
+                            Text {
+                                text: file.icon;
+                                width: 32px;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: file.name;
+                                horizontal-stretch: 1;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: file.size;
+                                width: 90px;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: file.modified;
+                                width: 150px;
+                                vertical-alignment: center;
+                            }
+
+                            Text {
+                                text: file.extension;
+                                width: 80px;
+                                vertical-alignment: center;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+}
